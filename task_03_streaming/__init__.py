@@ -1,1 +1,1 @@
-"""Streaming PII gateway: implementation intentionally pending."""
+"""Bounded incremental SSE gateway with fail-closed PII filtering."""

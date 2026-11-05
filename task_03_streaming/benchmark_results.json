@@ -1,0 +1,182 @@
+{
+  "environment": {
+    "dependencies": {
+      "fastapi": "0.162.0",
+      "httpx": "0.28.1",
+      "pydantic": "2.14.2",
+      "uvicorn": "0.54.0"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.5"
+  },
+  "latency": {
+    "gateway_normal": {
+      "median": {
+        "first_output_ms": 84.79660004377365,
+        "headers_ms": 25.60090000042692,
+        "max_inter_output_gap_ms": 62.85009998828173,
+        "total_ms": 312.7021000254899
+      },
+      "runs": [
+        {
+          "first_output_ms": 84.03159998124465,
+          "headers_ms": 26.383300020825118,
+          "max_inter_output_gap_ms": 62.26010003592819,
+          "output_events": 5,
+          "total_ms": 310.8471999876201
+        },
+        {
+          "first_output_ms": 86.92719996906817,
+          "headers_ms": 24.24030000111088,
+          "max_inter_output_gap_ms": 62.87329999031499,
+          "output_events": 5,
+          "total_ms": 315.3662999975495
+        },
+        {
+          "first_output_ms": 84.79660004377365,
+          "headers_ms": 26.188300049398094,
+          "max_inter_output_gap_ms": 62.85009998828173,
+          "output_events": 5,
+          "total_ms": 313.5143000399694
+        },
+        {
+          "first_output_ms": 83.78250000532717,
+          "headers_ms": 25.60090000042692,
+          "max_inter_output_gap_ms": 63.59609996434301,
+          "output_events": 5,
+          "total_ms": 310.8767999801785
+        },
+        {
+          "first_output_ms": 85.34589997725561,
+          "headers_ms": 24.298799980897456,
+          "max_inter_output_gap_ms": 62.36849998822436,
+          "output_events": 5,
+          "total_ms": 312.7021000254899
+        }
+      ]
+    },
+    "gateway_pii": {
+      "median": {
+        "first_output_ms": 86.02380001684651,
+        "headers_ms": 23.93660001689568,
+        "max_inter_output_gap_ms": 267.2556000179611,
+        "total_ms": 799.5893000042997
+      },
+      "runs": [
+        {
+          "first_output_ms": 86.02380001684651,
+          "headers_ms": 23.9844000316225,
+          "max_inter_output_gap_ms": 266.4933999767527,
+          "output_events": 5,
+          "total_ms": 796.911799989175
+        },
+        {
+          "first_output_ms": 86.30229998379946,
+          "headers_ms": 23.619299987331033,
+          "max_inter_output_gap_ms": 281.6787000047043,
+          "output_events": 5,
+          "total_ms": 814.5825000246987
+        },
+        {
+          "first_output_ms": 86.98189997812733,
+          "headers_ms": 23.245599993970245,
+          "max_inter_output_gap_ms": 262.9449999658391,
+          "output_events": 5,
+          "total_ms": 797.8870999650098
+        },
+        {
+          "first_output_ms": 84.07480001915246,
+          "headers_ms": 24.10430001327768,
+          "max_inter_output_gap_ms": 282.261100015603,
+          "output_events": 5,
+          "total_ms": 813.8518999912776
+        },
+        {
+          "first_output_ms": 83.88109999941662,
+          "headers_ms": 23.93660001689568,
+          "max_inter_output_gap_ms": 267.2556000179611,
+          "output_events": 5,
+          "total_ms": 799.5893000042997
+        }
+      ]
+    },
+    "provider_normal": {
+      "median": {
+        "first_output_ms": 76.47349999751896,
+        "headers_ms": 3.6288999835960567,
+        "max_inter_output_gap_ms": 63.51010000798851,
+        "total_ms": 298.7767999875359
+      },
+      "runs": [
+        {
+          "first_output_ms": 78.40940001187846,
+          "headers_ms": 3.6288999835960567,
+          "max_inter_output_gap_ms": 63.66050004726276,
+          "output_events": 5,
+          "total_ms": 314.81609999900684
+        },
+        {
+          "first_output_ms": 78.10530002461746,
+          "headers_ms": 3.2089000451378524,
+          "max_inter_output_gap_ms": 63.341000000946224,
+          "output_events": 5,
+          "total_ms": 298.7767999875359
+        },
+        {
+          "first_output_ms": 76.47349999751896,
+          "headers_ms": 4.072199983056635,
+          "max_inter_output_gap_ms": 63.5797000140883,
+          "output_events": 5,
+          "total_ms": 314.24739997601137
+        },
+        {
+          "first_output_ms": 46.0867999936454,
+          "headers_ms": 3.8570999749936163,
+          "max_inter_output_gap_ms": 63.51010000798851,
+          "output_events": 5,
+          "total_ms": 268.9163999748416
+        },
+        {
+          "first_output_ms": 61.21199997141957,
+          "headers_ms": 3.304899961221963,
+          "max_inter_output_gap_ms": 62.92679999023676,
+          "output_events": 5,
+          "total_ms": 280.5627000052482
+        }
+      ]
+    }
+  },
+  "memory": [
+    {
+      "elapsed_seconds": 2.5665709999739192,
+      "max_redactor_pending_chars": 6,
+      "max_sse_pending_chars": 254,
+      "output_sha256": "e8f2c9e613f3285dbe20fba7c78e90810e7906fbf7929c0769ae5bdf5537cac6",
+      "safe_output_chars": 131040,
+      "source_chars": 131040,
+      "tracemalloc_current_bytes": 2753,
+      "tracemalloc_peak_bytes": 6644,
+      "wire_bytes": 160020
+    },
+    {
+      "elapsed_seconds": 30.39076009998098,
+      "max_redactor_pending_chars": 6,
+      "max_sse_pending_chars": 254,
+      "output_sha256": "789bc00dccf6de43500e8587778d1d5430ec97e02ffd8b950f37b2e8e00c4200",
+      "safe_output_chars": 2097056,
+      "source_chars": 2097056,
+      "tracemalloc_current_bytes": 2729,
+      "tracemalloc_peak_bytes": 6620,
+      "wire_bytes": 2560828
+    }
+  ],
+  "method": {
+    "latency": "Actual loopback HTTP, first nonempty content delta; headers alone do not count",
+    "memory": "In-process SSE parser + delta validation + redactor with discard/hash sink; excludes HTTP/OS buffers and process RSS",
+    "monotonic_clock_resolution_seconds": 0.015625,
+    "provider_delay_seconds_per_delta": 0.05,
+    "runs": 5,
+    "timer_note": "Requested mock delays are subject to OS scheduling; 50 ms avoids sub-clock-resolution Windows timers",
+    "warmups_per_case": 1
+  }
+}
