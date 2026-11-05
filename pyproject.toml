@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-infrastructure-assessment"
+version = "0.1.0"
+description = "Setup-only scaffold for four AI infrastructure assessment tasks"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=2,<3",
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "pydantic>=2.11,<3",
+  "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<10", "pytest-asyncio>=0.26,<2", "setuptools==80.9.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["task_01_mcp*", "task_02_security*", "task_03_streaming*", "task_04_limiter*", "mock_services*"]
+exclude = ["*.tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "task_01_mcp/tests", "task_02_security/tests", "task_03_streaming/tests", "task_04_limiter/tests"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--import-mode=importlib -ra --strict-markers --strict-config"
+filterwarnings = ["error"]
