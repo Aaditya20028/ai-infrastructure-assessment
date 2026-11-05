@@ -1,1 +1,1 @@
-"""MCP security gateway: implementation intentionally pending."""
+"""HTTP/JSON-RPC security gateway with authenticated mock roles."""
