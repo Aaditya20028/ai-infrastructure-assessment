@@ -1,1 +1,1 @@
-"""Token limiter and fallback: implementation intentionally pending."""
+"""Durable token quota reservations and bounded provider fallback."""

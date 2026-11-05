@@ -1,0 +1,83 @@
+{
+  "environment": {
+    "dependencies": {
+      "fastapi": "0.162.0",
+      "httpx": "0.28.1",
+      "pydantic": "2.14.2",
+      "uvicorn": "0.54.0"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.5",
+    "sqlite": "3.41.2"
+  },
+  "fallback": {
+    "ok": {
+      "fallback_reason": null,
+      "median_ms": 22.766900015994906,
+      "primary_requested_delay_seconds": 0,
+      "runs_ms": [
+        23.19129998795688,
+        24.87309998832643,
+        22.766900015994906,
+        21.430500026326627,
+        22.61530002579093
+      ],
+      "selected_provider": "primary"
+    },
+    "rate_limit": {
+      "fallback_reason": "primary_rate_limit",
+      "median_ms": 32.61609998298809,
+      "primary_requested_delay_seconds": 0,
+      "runs_ms": [
+        34.08170002512634,
+        32.61609998298809,
+        32.837699982337654,
+        31.946800008881837,
+        32.413900014944375
+      ],
+      "selected_provider": "secondary"
+    },
+    "slow": {
+      "fallback_reason": "primary_timeout",
+      "median_ms": 3056.4171000150964,
+      "primary_requested_delay_seconds": 3.2,
+      "runs_ms": [
+        3074.3235999834724,
+        3056.4171000150964,
+        3020.7500000251457
+      ],
+      "selected_provider": "secondary"
+    }
+  },
+  "method": {
+    "database": "Temporary on-disk SQLite, WAL, synchronous=FULL, busy timeout 5 seconds",
+    "latency": "Actual loopback HTTP + SQLite admission/reconciliation, separate gateway and two mock processes",
+    "limitations": "Local mock/storage measurements, not real model performance; excludes service startup from HTTP latency; process probe includes spawn",
+    "quota": "50000 units / rolling 60 seconds per tenant, including active holds",
+    "slow_runs": "At most 3, no discarded slow warmup; 3.2-second mock response versus strict 3-second primary deadline"
+  },
+  "storage": {
+    "processes": {
+      "admitted": 50,
+      "attempts": 80,
+      "elapsed_seconds_including_spawn": 1.0179374999715947,
+      "usage": 50000,
+      "workers_used": 4
+    },
+    "sequential": {
+      "admission_seconds": 1.1969658000161871,
+      "admissions_per_second": 167.0891515841934,
+      "requests": 200,
+      "settlement_seconds": 1.1125731999636628,
+      "settlements_per_second": 179.7634528735117
+    },
+    "threads": {
+      "admitted": 50,
+      "attempts": 64,
+      "elapsed_seconds_including_connection_setup": 0.8280847999849357,
+      "rejected": 14,
+      "reserved_usage": 50000,
+      "workers": 8
+    }
+  }
+}
