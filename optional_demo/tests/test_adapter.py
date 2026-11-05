@@ -66,4 +66,5 @@ def test_all_four_demos_use_real_public_interfaces():
     assert rows[2]["text"].count("[REDACTED]") == 3
     assert "alice@" not in result.stdout
     assert rows[3]["completion"]["provider"] == "secondary"
+    assert rows[3]["completion"]["usage"]["encoding"] == "cl100k_base"
     assert rows[3]["quota_denial"]["error"]["code"] == "quota_exceeded"

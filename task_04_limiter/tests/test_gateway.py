@@ -10,7 +10,7 @@ import pytest
 
 from task_04_limiter.providers import Deadlines, PRIMARY_TIMEOUT_SECONDS
 from task_04_limiter.storage import StoreUnavailable
-from .conftest import bearer, open_gateway, provider_reply
+from .conftest import bearer, open_gateway, provider_reply, prompt_with_tokens
 
 
 def assert_public_error(response, code, status):
@@ -28,8 +28,10 @@ async def test_under_limit_primary_success_reconciles_and_never_calls_backup(gat
     response = await gateway.client.post("/v1/complete", json={"prompt": "hello", "max_output_tokens": 100}, headers=bearer(keys["a"]))
     assert response.status_code == 200
     assert response.json()["provider"] == "primary" and response.json()["fallback_reason"] is None
-    assert response.json()["usage"]["total_tokens"] == 7
-    assert gateway.store.usage(gateway.tenant(keys["a"])) == 7
+    assert response.json()["usage"]["total_tokens"] == 2
+    assert response.json()["usage"]["counting_method"] == "tiktoken_cl100k_base_v1"
+    assert response.json()["usage"]["encoding"] == "cl100k_base"
+    assert gateway.store.usage(gateway.tenant(keys["a"])) == 2
     assert [request.url.host for request in gateway.requests] == ["primary"]
     assert all(name not in gateway.requests[0].headers for name in ("authorization", "cookie", "x-tenant"))
 
@@ -37,7 +39,7 @@ async def test_under_limit_primary_success_reconciles_and_never_calls_backup(gat
 @pytest.mark.asyncio
 async def test_exact_limit_and_above_limit_are_enforced_before_forwarding(tmp_path, keys, clock):
     async with open_gateway(tmp_path / "quota.db", keys, clock, handler=lambda req: provider_reply(req, text="x")) as gateway:
-        result = await gateway.client.post("/v1/complete", json={"prompt": "x" * 49999, "max_output_tokens": 1}, headers=bearer(keys["a"]))
+        result = await gateway.client.post("/v1/complete", json={"prompt": prompt_with_tokens(49999), "max_output_tokens": 1}, headers=bearer(keys["a"]))
         assert result.status_code == 200 and result.json()["usage"]["total_tokens"] == 50000
         denied = await gateway.client.post("/v1/complete", json={"prompt": "x", "max_output_tokens": 1}, headers=bearer(keys["a"]))
         assert_public_error(denied, "quota_exceeded", 429)
@@ -48,9 +50,21 @@ async def test_exact_limit_and_above_limit_are_enforced_before_forwarding(tmp_pa
 
 @pytest.mark.asyncio
 async def test_oversize_reservation_without_prior_usage(gateway, keys):
-    response = await gateway.client.post("/v1/complete", json={"prompt": "é" * 25000, "max_output_tokens": 1}, headers=bearer(keys["a"]))
+    response = await gateway.client.post("/v1/complete", json={"prompt": prompt_with_tokens(50000), "max_output_tokens": 1}, headers=bearer(keys["a"]))
     assert_public_error(response, "quota_exceeded", 429)
     assert gateway.requests == []
+
+
+@pytest.mark.asyncio
+async def test_admission_uses_tokens_even_when_utf8_bytes_exceed_quota(tmp_path, keys, clock):
+    prompt = "😀\n" * 10000
+    assert len(prompt.encode("utf-8")) == 50000
+    async with open_gateway(tmp_path / "quota.db", keys, clock, handler=lambda req: provider_reply(req, text="x")) as gateway:
+        response = await gateway.client.post("/v1/complete", json={"prompt": prompt, "max_output_tokens": 1}, headers=bearer(keys["a"]))
+        assert response.status_code == 200
+        assert response.json()["usage"]["input_tokens"] == 30000
+        assert response.json()["usage"]["total_tokens"] == 30001
+        assert gateway.store.usage(gateway.tenant(keys["a"])) == 30001
 
 
 @pytest.mark.asyncio
@@ -63,7 +77,7 @@ async def test_primary_429_immediate_fallback_charges_one_logical_request(tmp_pa
         assert response.status_code == 200
         assert response.json()["provider"] == "secondary" and response.json()["fallback_reason"] == "primary_rate_limit"
         assert [request.url.host for request in gateway.requests] == ["primary", "secondary"]
-        assert gateway.store.usage(gateway.tenant(keys["a"])) == 7
+        assert gateway.store.usage(gateway.tenant(keys["a"])) == 2
         with closing(sqlite3.connect(gateway.store.path)) as connection:
             assert connection.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == 1
 
@@ -104,7 +118,7 @@ async def test_exact_3000ms_deadline_and_late_primary_cannot_overwrite(tmp_path,
         usage = gateway.store.usage(gateway.tenant(keys["a"]))
         release_late.set()
         await asyncio.gather(*list(deadlines.inflight))
-        assert response.json()["text"] == "ok" and gateway.store.usage(gateway.tenant(keys["a"])) == usage == 7
+        assert response.json()["text"] == "ok" and gateway.store.usage(gateway.tenant(keys["a"])) == usage == 2
 
 
 @pytest.mark.asyncio
@@ -127,7 +141,7 @@ async def test_secondary_and_both_provider_failures_are_sanitized(tmp_path, keys
         response = await gateway.client.post("/v1/complete", json={"prompt": "hello", "max_output_tokens": 10}, headers=bearer(keys["a"]))
         assert_public_error(response, code, http_status)
         assert len(gateway.requests) == 2
-        assert gateway.store.usage(gateway.tenant(keys["a"])) == 15  # Full one reserve, never two.
+        assert gateway.store.usage(gateway.tenant(keys["a"])) == 11  # Full one reserve, never two.
     assert "SENSITIVE" not in caplog.text
 
 
@@ -159,7 +173,7 @@ async def test_secondary_timeout_is_explicit_and_sanitized(tmp_path, keys, clock
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("payload", [
-    {"text": "bad-too-long"}, {"text": "ok", "usage": {"input_tokens": 0, "output_tokens": 0}},
+    {"text": "word " * 6}, {"text": "ok", "usage": {"input_tokens": 0, "output_tokens": 0}},
     {"text": "ok", "usage": {"input_tokens": 1, "output_tokens": -1}},
     {"text": "ok", "usage": {"input_tokens": 1, "output_tokens": 99}},
 ])
@@ -174,14 +188,14 @@ async def test_invalid_usage_keeps_full_reservation_and_does_not_fallback(tmp_pa
 async def test_missing_provider_usage_uses_measured_contract(tmp_path, keys, clock):
     async with open_gateway(tmp_path / "quota.db", keys, clock, handler=lambda req: provider_reply(req, usage=False)) as gateway:
         result = await gateway.client.post("/v1/complete", json={"prompt": "café", "max_output_tokens": 5}, headers=bearer(keys["a"]))
-        assert result.status_code == 200 and result.json()["usage"]["total_tokens"] == 7
+        assert result.status_code == 200 and result.json()["usage"]["total_tokens"] == 3
 
 
 @pytest.mark.asyncio
 async def test_ledger_persists_across_application_restart(tmp_path, keys, clock):
     path = tmp_path / "persistent.db"
     async with open_gateway(path, keys, clock, handler=lambda req: provider_reply(req, text="x")) as first:
-        response = await first.client.post("/v1/complete", json={"prompt": "x" * 49999, "max_output_tokens": 1}, headers=bearer(keys["a"]))
+        response = await first.client.post("/v1/complete", json={"prompt": prompt_with_tokens(49999), "max_output_tokens": 1}, headers=bearer(keys["a"]))
         assert response.status_code == 200
     async with open_gateway(path, keys, clock) as second:
         response = await second.client.post("/v1/complete", json={"prompt": "x"}, headers=bearer(keys["a"]))
@@ -222,7 +236,7 @@ async def test_http_concurrency_cannot_exceed_active_budget(tmp_path, keys, cloc
         assert sum(response.status_code == 200 for response in responses) == 50
         assert sum(response.status_code == 429 for response in responses) == 30
         assert len(gateway.requests) == 50
-        assert gateway.store.usage(gateway.tenant(keys["a"])) == 100
+        assert gateway.store.usage(gateway.tenant(keys["a"])) == 50
 
 
 @pytest.mark.asyncio
@@ -321,7 +335,7 @@ async def test_cancel_after_reconciliation_commit_does_not_double_charge(gateway
     release.set()
     with pytest.raises(asyncio.CancelledError):
         await task
-    assert gateway.store.usage(gateway.tenant(keys["a"])) == 7
+    assert gateway.store.usage(gateway.tenant(keys["a"])) == 2
 
 
 @pytest.mark.asyncio

@@ -6,3 +6,4 @@ httpx==0.28.1
 pydantic==2.14.2
 pytest==9.2.0
 pytest-asyncio==1.4.1.post1
+tiktoken==0.12.0

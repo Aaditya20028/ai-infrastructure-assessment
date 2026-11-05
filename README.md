@@ -72,8 +72,9 @@ $env:TASK4_DATABASE = Join-Path $PWD 'data\task4_quota.sqlite3'
 python -m task_04_limiter
 ```
 
-Task 4's quota is 50000 units per rolling 60 seconds under its documented
-UTF-8-byte logical-request contract, not native-provider aggregate retry billing.
+Task 4 counts actual `tiktoken==0.12.0` / `cl100k_base` token IDs: 50000 tokens
+per rolling 60 seconds. See its README for tokenizer-cache preparation and
+safe migration of existing byte ledgers. This is not universal provider billing.
 Tasks do not read each other's `TASK2_*`, `TASK3_*` or `TASK4_*` configuration.
 Task 4's ledger is not used by any other task. The original `mock_services/`
 fixtures and scaffold `.env.example` are not dependencies of these four tasks.

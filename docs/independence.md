@@ -1,5 +1,10 @@
 # Independent evaluation and optional adapter verification
 
+Historical checkpoint for the optional-adapter change at
+`b7ebb54f8a057c5028e89d140e90287949e2baed`. Task 4's subsequent tokenizer
+correction and current regression counts are recorded in
+`../task_04_limiter/VALIDATION.md`; the earlier test results below are preserved.
+
 The four task packages are the primary deliverables. The optional fifth
 component is a CLI adapter. No file inside any of the four task packages was
 changed from baseline commit `d97f1914b92746b48aaac9e435a5cd55994930a2`.

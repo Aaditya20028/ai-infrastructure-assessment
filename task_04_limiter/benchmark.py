@@ -15,6 +15,7 @@ import httpx
 
 from .devtools import local_services, process_probe
 from .storage import QuotaStore
+from .tokenization import COUNTING_METHOD
 
 
 def storage_bench(folder, operations):
@@ -84,9 +85,10 @@ def main():
         parser.error("operations must be 1..500 and runs must be positive")
     with tempfile.TemporaryDirectory(prefix="task4-benchmark-") as temp:
         report = {"environment": {"python": platform.python_version(), "platform": platform.platform(), "sqlite": sqlite3.sqlite_version,
-                  "dependencies": {name: importlib.metadata.version(name) for name in ("fastapi", "httpx", "uvicorn", "pydantic")}},
+                  "dependencies": {name: importlib.metadata.version(name) for name in ("fastapi", "httpx", "uvicorn", "pydantic", "tiktoken")}},
                   "method": {"database": "Temporary on-disk SQLite, WAL, synchronous=FULL, busy timeout 5 seconds",
-                             "quota": "50000 units / rolling 60 seconds per tenant, including active holds",
+                             "quota": "50000 tokens / rolling 60 seconds per tenant, including active holds",
+                             "counting_method": COUNTING_METHOD,
                              "latency": "Actual loopback HTTP + SQLite admission/reconciliation, separate gateway and two mock processes",
                              "slow_runs": "At most 3, no discarded slow warmup; 3.2-second mock response versus strict 3-second primary deadline",
                              "limitations": "Local mock/storage measurements, not real model performance; excludes service startup from HTTP latency; process probe includes spawn"},

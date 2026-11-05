@@ -134,7 +134,7 @@ def task_four():
             response.raise_for_status()
             body = response.json()
             require(body.get("provider") == "secondary" and body.get("fallback_reason") == "primary_rate_limit")
-            denied = client.post(url, json={"prompt": "x" * 50000, "max_output_tokens": 1}, headers=headers)
+            denied = client.post(url, json={"prompt": "hello", "max_output_tokens": 50000}, headers=headers)
             require(denied.status_code == 429 and denied.json().get("error", {}).get("code") == "quota_exceeded")
         return {"task": 4, "completion": body, "quota_denial": denied.json()}
 

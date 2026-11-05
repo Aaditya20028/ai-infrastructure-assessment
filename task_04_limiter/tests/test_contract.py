@@ -6,12 +6,16 @@ from pydantic import ValidationError
 from task_04_limiter.accounting import actual_usage, reservation_tokens
 from task_04_limiter.auth import authenticate
 from task_04_limiter.models import CompletionRequest, ProviderResult, Settings
+from task_04_limiter.tokenization import count_tokens, encoding, truncate_to_tokens
 
 
-def test_utf8_byte_reservation_and_optional_usage():
+def test_actual_token_ids_reservation_and_optional_usage():
+    assert encoding().encode_ordinary("hello world") == [15339, 1917]
+    assert count_tokens("hello world") == 2
+    assert count_tokens("hello world") != len("hello world".encode("utf-8"))
     request = CompletionRequest(prompt="café", max_output_tokens=10)
-    assert reservation_tokens(request) == 15
-    assert actual_usage(request, ProviderResult(text="ok")).model_dump() == {"input_tokens": 5, "output_tokens": 2}
+    assert reservation_tokens(request) == 12
+    assert actual_usage(request, ProviderResult(text="ok")).model_dump() == {"input_tokens": 2, "output_tokens": 1}
 
 
 @pytest.mark.parametrize("body", [
@@ -26,12 +30,27 @@ def test_strict_request_validation(body):
 
 
 @pytest.mark.parametrize("result", [
-    {"text": "too long"}, {"text": "ok", "usage": {"input_tokens": 0, "output_tokens": 2}},
-    {"text": "ok", "usage": {"input_tokens": 1, "output_tokens": 1}},
+    {"text": "too long"}, {"text": "ok", "usage": {"input_tokens": 0, "output_tokens": 1}},
+    {"text": "ok", "usage": {"input_tokens": 1, "output_tokens": 2}},
 ])
 def test_inconsistent_or_excessive_usage_rejected(result):
     with pytest.raises(ValueError):
-        actual_usage(CompletionRequest(prompt="x", max_output_tokens=2), ProviderResult(**result))
+        actual_usage(CompletionRequest(prompt="x", max_output_tokens=1), ProviderResult(**result))
+
+
+@pytest.mark.parametrize("text", ["hello world", "café", "こんにちは世界🙂", "<|endoftext|>", "🙂🙂 mixed text"])
+def test_token_budget_truncation_is_unicode_safe(text):
+    for budget in range(count_tokens(text) + 1):
+        limited = truncate_to_tokens(text, budget)
+        assert text.startswith(limited)
+        assert "\ufffd" not in limited
+        assert count_tokens(limited) <= budget
+    assert truncate_to_tokens(text, count_tokens(text)) == text
+
+
+def test_token_cap_is_not_a_byte_cap_and_special_spellings_are_ordinary_text():
+    assert truncate_to_tokens("hello world", 1) == "hello"
+    assert count_tokens("<|endoftext|>") == len(encoding().encode_ordinary("<|endoftext|>")) == 7
 
 
 def test_verified_keys_aliases_and_untrusted_claims(keys):

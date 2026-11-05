@@ -4,6 +4,7 @@
       "fastapi": "0.162.0",
       "httpx": "0.28.1",
       "pydantic": "2.14.2",
+      "tiktoken": "0.12.0",
       "uvicorn": "0.54.0"
     },
     "platform": "Windows-10-10.0.26200-SP0",
@@ -13,68 +14,69 @@
   "fallback": {
     "ok": {
       "fallback_reason": null,
-      "median_ms": 22.766900015994906,
+      "median_ms": 29.630100005306304,
       "primary_requested_delay_seconds": 0,
       "runs_ms": [
-        23.19129998795688,
-        24.87309998832643,
-        22.766900015994906,
-        21.430500026326627,
-        22.61530002579093
+        30.56570002809167,
+        29.630100005306304,
+        31.088799994904548,
+        29.354199999943376,
+        29.39789998345077
       ],
       "selected_provider": "primary"
     },
     "rate_limit": {
       "fallback_reason": "primary_rate_limit",
-      "median_ms": 32.61609998298809,
+      "median_ms": 44.762900040950626,
       "primary_requested_delay_seconds": 0,
       "runs_ms": [
-        34.08170002512634,
-        32.61609998298809,
-        32.837699982337654,
-        31.946800008881837,
-        32.413900014944375
+        42.257399996742606,
+        45.04080000333488,
+        44.762900040950626,
+        43.776299979072064,
+        46.24260001583025
       ],
       "selected_provider": "secondary"
     },
     "slow": {
       "fallback_reason": "primary_timeout",
-      "median_ms": 3056.4171000150964,
+      "median_ms": 3066.547099966556,
       "primary_requested_delay_seconds": 3.2,
       "runs_ms": [
-        3074.3235999834724,
-        3056.4171000150964,
-        3020.7500000251457
+        3111.207799986005,
+        3066.547099966556,
+        3057.9889999935403
       ],
       "selected_provider": "secondary"
     }
   },
   "method": {
+    "counting_method": "tiktoken_cl100k_base_v1",
     "database": "Temporary on-disk SQLite, WAL, synchronous=FULL, busy timeout 5 seconds",
     "latency": "Actual loopback HTTP + SQLite admission/reconciliation, separate gateway and two mock processes",
     "limitations": "Local mock/storage measurements, not real model performance; excludes service startup from HTTP latency; process probe includes spawn",
-    "quota": "50000 units / rolling 60 seconds per tenant, including active holds",
+    "quota": "50000 tokens / rolling 60 seconds per tenant, including active holds",
     "slow_runs": "At most 3, no discarded slow warmup; 3.2-second mock response versus strict 3-second primary deadline"
   },
   "storage": {
     "processes": {
       "admitted": 50,
       "attempts": 80,
-      "elapsed_seconds_including_spawn": 1.0179374999715947,
+      "elapsed_seconds_including_spawn": 1.8889831000124104,
       "usage": 50000,
       "workers_used": 4
     },
     "sequential": {
-      "admission_seconds": 1.1969658000161871,
-      "admissions_per_second": 167.0891515841934,
+      "admission_seconds": 2.074923900014255,
+      "admissions_per_second": 96.38907720838627,
       "requests": 200,
-      "settlement_seconds": 1.1125731999636628,
-      "settlements_per_second": 179.7634528735117
+      "settlement_seconds": 1.9662937999819405,
+      "settlements_per_second": 101.71419957782346
     },
     "threads": {
       "admitted": 50,
       "attempts": 64,
-      "elapsed_seconds_including_connection_setup": 0.8280847999849357,
+      "elapsed_seconds_including_connection_setup": 1.1355430000112392,
       "rejected": 14,
       "reserved_usage": 50000,
       "workers": 8

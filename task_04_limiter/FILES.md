@@ -1,32 +1,35 @@
-# Exact Task 4 change inventory
+# Tokenizer correction: exact change inventory
 
-All paths are repository-relative and confined to `task_04_limiter/`.
-No Task 1–3 files or shared configuration were changed. The benchmark JSON is an
-intentional deliverable; runtime databases, credentials, caches and logs are not.
+This correction replaces byte accounting with real cl100k_base token IDs.
+Tasks 1–3 remain unchanged. The optional adapter changes only its public
+above-quota request and assertion; no core logic moved into it. The earlier
+Task 4 creation inventory is preserved in commit d97f1914b92746b48aaac9e435a5cd55994930a2.
 
 ```text
+M README.md
+M docs/independence.md
+M optional_demo/runner.py
+M optional_demo/tests/test_adapter.py
+M pyproject.toml
+M task_04_limiter/BENCHMARKS.md
+M task_04_limiter/FILES.md
 M task_04_limiter/README.md
-M task_04_limiter/__init__.py
-M task_04_limiter/__main__.py
-A task_04_limiter/BENCHMARKS.md
-A task_04_limiter/FILES.md
-A task_04_limiter/VALIDATION.md
-A task_04_limiter/accounting.py
-A task_04_limiter/app.py
-A task_04_limiter/auth.py
-A task_04_limiter/benchmark.py
-A task_04_limiter/benchmark_results.json
-A task_04_limiter/devtools.py
-A task_04_limiter/mock_provider.py
-A task_04_limiter/models.py
-A task_04_limiter/providers.py
-A task_04_limiter/requirements.txt
-A task_04_limiter/storage.py
-A task_04_limiter/tests/conftest.py
-A task_04_limiter/tests/test_contract.py
-A task_04_limiter/tests/test_deadlines.py
-A task_04_limiter/tests/test_gateway.py
-A task_04_limiter/tests/test_http_integration.py
-A task_04_limiter/tests/test_storage.py
-D task_04_limiter/tests/test_scaffold.py
+M task_04_limiter/VALIDATION.md
+M task_04_limiter/accounting.py
+M task_04_limiter/app.py
+M task_04_limiter/benchmark.py
+M task_04_limiter/benchmark_results.json
+M task_04_limiter/mock_provider.py
+M task_04_limiter/requirements.txt
+M task_04_limiter/storage.py
+M task_04_limiter/tests/conftest.py
+M task_04_limiter/tests/test_contract.py
+M task_04_limiter/tests/test_gateway.py
+A task_04_limiter/tests/test_mock_tokens.py
+M task_04_limiter/tests/test_storage.py
+A task_04_limiter/tokenization.py
 ```
+
+The raw benchmark JSON is an intentional deliverable. No tokenizer cache,
+SQLite database, API key, environment file, virtual environment or test cache
+is committed.

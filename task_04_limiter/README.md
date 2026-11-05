@@ -2,7 +2,7 @@
 
 An independently runnable FastAPI completion gateway with an on-disk SQLite
 reservation ledger, authenticated tenant keys, and two configurable local model
-fixtures. The quota is **50,000 accounted token units per rolling 60 seconds**
+fixtures. The quota is **50,000 cl100k_base tokens per rolling 60 seconds**
 per authenticated tenant. Primary HTTP 429 or a strict 3000 ms deadline triggers
 one backup attempt. Tasks 1–3 remain unchanged. No frontend or combined demo is
 included; these task-specific instructions supersede its original scaffold.
@@ -18,7 +18,7 @@ Bearer key -> verified tenant digest -> strict request validation
 
 - `models.py` / `auth.py`: strict contracts, required mock credentials and
   server-side tenant identity. Body/header tenant claims cannot select a quota.
-- `accounting.py`: one documented byte-based token contract and usage checks.
+- `tokenization.py` / `accounting.py`: pinned tokenizer token IDs and usage checks.
 - `storage.py`: versioned schema, WAL, atomic admission, reconciliation/eviction
   and cancellation-safe thread calls around standard-library sqlite3.
 - `providers.py`: bounded async forwarding, explicit fallback policy and
@@ -32,6 +32,20 @@ From the repository root with Python 3.11+ and an activated `.venv`:
 ```powershell
 python -m pip install -e ".[dev]" -r task_04_limiter/requirements.txt
 ```
+
+Task 4 pins `tiktoken==0.12.0` and `cl100k_base`. Warm its public vocabulary
+download before starting services or running offline tests:
+
+```powershell
+$env:TIKTOKEN_CACHE_DIR = Join-Path $PWD 'data\tiktoken-cache'
+python -c "from task_04_limiter.tokenization import encoding; encoding()"
+```
+
+The first load downloads hash-verified public encoding data, not a paid LLM API.
+Subsequent loads work offline from that cache. Keep this setting in the Task 4
+shell so child mock processes use the same cache. A missing asset or dependency
+fails startup; there is no byte-count fallback. The cache is ignored by Git.
+Without this optional setting, tiktoken uses its normal temporary cache.
 
 Terminal A, primary fixture:
 
@@ -73,7 +87,8 @@ $body | curl.exe -sS -i http://127.0.0.1:8086/v1/complete -H "Authorization: Bea
 
 Success includes `request_id`, `text`, `provider` (`primary` or `secondary`),
 `fallback_reason` (null, `primary_rate_limit` or `primary_timeout`), and measured
-`usage` with `counting_method: utf8_bytes_v1`. No provider URL or API key is
+`usage` with `counting_method: tiktoken_cl100k_base_v1` and
+`encoding: cl100k_base`. No provider URL or API key is
 included. `max_output_tokens` is a strict integer, defaults to 256, and must be
 1..50000; `prompt` is a strict string up to 50000 characters. Unknown fields,
 including `tenant` and `tenant_id`, are rejected. The HTTP body limit is 256 KiB.
@@ -92,28 +107,39 @@ python -m task_04_limiter --service primary --behavior slow --delay 3.2
 The secondary can similarly use `--behavior unavailable` to test a failed backup.
 Services support `--host`, `--port`, `--behavior ok|rate_limit|slow|unavailable`
 and `--delay`. The mock returns deterministic ASCII text and exact local usage;
-it makes no real model calls. Its output is truncated to the requested byte-unit
-budget. Provider behavior is operator configuration, not a client request field.
+it makes no real model calls. Its output is truncated using tokenizer-produced
+token IDs to the requested output-token budget, not a byte or character limit.
+Provider behavior is operator configuration, not a client request field.
 
 ## Exact token-accounting contract
 
-The local fixtures define **one accounted token unit as one UTF-8 byte** of the
-prompt or generated text. Input is counted before admission; the reservation is:
+The gateway and both mocks share [tiktoken](https://github.com/openai/tiktoken)
+version `0.12.0` with explicit `cl100k_base`.
+Counting is the number of tokenizer-produced IDs:
 
-```text
-UTF8_byte_length(prompt) + max_output_tokens
+```python
+len(tiktoken.get_encoding("cl100k_base").encode_ordinary(text))
 ```
 
-`max_output_tokens` is the maximum output **byte units** for these mocks, not a
-claim about an arbitrary commercial model's tokenizer. UTF-8 bytes provide a
-conservative prompt proxy for common byte-level tokenizers, but hidden system
-messages, template overhead and other tokenizers are not modeled. The response
-explicitly labels the counting method. A real provider needs a validated
-tokenizer/overhead adapter and output-bound contract before using these quotas.
+For example, `hello world` has IDs `[15339, 1917]`: two tokens, not eleven UTF-8
+bytes. `café` is two tokens rather than five bytes. Special-token spellings in
+user text are encoded as ordinary text, not interpreted as control-token IDs.
 
-Success recomputes input/output byte counts from validated prompt and result.
-An optional provider usage report must match exactly. Missing usage uses measured
-bytes; negative, inconsistent or excessive usage/output fails closed. Provider
+Before admission, reserve `input_token_count + max_output_tokens`. On success,
+reconcile to `input_token_count + actual_output_token_count`. The same tokenizer
+is used for both counts. `max_output_tokens` is an actual token ceiling. Mock
+truncation decodes a safe token prefix, drops any incomplete UTF-8 suffix and
+re-counts the resulting string to enforce that ceiling.
+
+This encoding does **not** exactly match every commercial provider/model.
+Hidden system messages, chat-template overhead and different tokenizers are not
+modeled by this plain-text completion API. A real provider needs a model-specific
+adapter before claiming billing-equivalent counts. The code genuinely counts
+cl100k_base IDs; it does not approximate them with byte, character or word counts.
+
+Success recomputes tokenizer counts from validated prompt and result.
+An optional provider usage report must match exactly. Missing usage uses actual
+token IDs; negative, inconsistent or excessive usage/output fails closed. Provider
 responses are capped at 300000 bytes, must be JSON, and cannot be compressed or
 redirected. Caller credentials, cookies and custom headers are not forwarded.
 
@@ -128,7 +154,7 @@ an abandoned primary is unknown.
 
 | Stage | Ledger treatment |
 | --- | --- |
-| Admission | Reserve conservative input + full output maximum before any provider call; reject if active holds + unexpired settled units + new hold would exceed 50000 |
+| Admission | Reserve counted input + full output-token maximum before any provider call; reject if active holds + unexpired settled tokens + new hold would exceed 50000 |
 | Primary 429 / timeout | Reuse the same logical hold for one backup; no second reservation or duplicate input charge |
 | Success | Replace the hold with actual winning input + output units, timestamped at reconciliation |
 | Failed/invalid providers or cancellation | Settle the full reservation once, conservatively retaining unknown work; do not repeatedly refund failures |
@@ -156,11 +182,11 @@ The database is a dedicated on-disk file, default `data/task4_quota.sqlite3`.
 `:memory:` and URI-memory databases are rejected. Runtime `.sqlite3`, `-wal`
 and `-shm` files are ignored by Git, never submission artifacts.
 
-Schema version 1 (`PRAGMA user_version=1`) is initialized atomically at startup:
+Schema version 2 (`PRAGMA user_version=2`) is initialized atomically at startup:
 
 | Table | Fields / purpose |
 | --- | --- |
-| `reservations` | `request_id` primary key; hashed `tenant`; `reserved`; charged/held `units`; `state` active/settled; `created_at`; nullable `settled_at` |
+| `reservations` | `request_id` primary key; hashed `tenant`; `reserved`; charged/held token `units`; `state` active/settled; `created_at`; nullable `settled_at`; `accounting_method` |
 | `quota_clock` | Singleton `latest` observed clock value, clamped across workers to prevent backward-clock reuse |
 
 Checks constrain units to `0 <= units <= reserved <= 50000`, require positive
@@ -170,8 +196,16 @@ contains the authoritative DDL and transition SQL. All SQL values are bound
 parameters. Raw API keys, prompts, completion text and provider URLs are not
 stored in the ledger.
 
-Initialization supports a new/version-0 dedicated database and existing version
-1. Unknown schema versions fail startup; no guessed destructive migration runs.
+New/version-0 databases use token counts. Version-1 byte ledgers upgrade atomically
+without resetting or deleting usage: old rows are labelled `legacy_utf8_bytes_v1`
+and retain conservative amounts until normal settled expiration or explicit full
+settlement of old active holds. Prompt/output text was never stored, so exact
+historical tokens cannot be reconstructed. The migration does not guess a
+conversion or release quota early. New rows use `tiktoken_cl100k_base_v1`;
+explicit token reconciliation of legacy rows is rejected. Restart Task 4 workers
+and both mocks together on upgrade; do not run mixed accounting versions. Old
+startup rejects schema 2. Existing version-2 token ledgers persist across restart.
+Unknown versions/methods fail startup without clearing the ledger.
 Each operation opens its own connection with a 5-second busy timeout and
 `synchronous=FULL`; WAL is enabled. `BEGIN IMMEDIATE` serializes the
 evict/count/check/insert transaction across threads and processes on the same
@@ -248,7 +282,7 @@ Provider URLs are operator-controlled HTTP(S), without credentials/query/fragmen
 Redirects, environment proxies and automatic retries are disabled. Twenty pooled
 provider connections are allowed. No paid keys, production identity provider,
 TLS termination, key-expiry service, automatic orphan recovery, distributed
-multi-host store, or native commercial-model tokenizer is claimed. Keep fixtures
+multi-host store, or universal commercial-model token equivalence is claimed. Keep fixtures
 on loopback/private networks. Keys are configurable local shared secrets; rotate
 configuration and restart to revoke them. Only Windows/Python 3.11.5/SQLite 3.41.2
 was exercised. Direct dependencies are pinned; transitives are not hash-locked.

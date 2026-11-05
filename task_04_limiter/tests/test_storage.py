@@ -6,6 +6,7 @@ import pytest
 
 from task_04_limiter.devtools import process_probe
 from task_04_limiter.storage import LIMIT, QuotaStore, StoreUnavailable
+from task_04_limiter.tokenization import COUNTING_METHOD, LEGACY_METHOD
 
 
 def test_under_exact_and_above_limit(tmp_path, clock):
@@ -144,7 +145,7 @@ def test_schema_wal_indexes_and_unknown_version(tmp_path, clock):
     QuotaStore(path, clock=clock)
     with closing(sqlite3.connect(path)) as connection:
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         names = {row[1] for row in connection.execute("PRAGMA index_list(reservations)")}
         assert {"quota_tenant", "quota_expiry"} <= names
         connection.execute("PRAGMA user_version=99")
@@ -156,3 +157,27 @@ def test_schema_wal_indexes_and_unknown_version(tmp_path, clock):
 def test_memory_databases_rejected(path):
     with pytest.raises(ValueError):
         QuotaStore(path)
+
+
+def test_version_one_migration_preserves_conservative_charges_and_active_holds(tmp_path, clock):
+    path = tmp_path / "legacy.db"
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute("CREATE TABLE reservations (request_id TEXT PRIMARY KEY,tenant TEXT NOT NULL,reserved INTEGER NOT NULL,units INTEGER NOT NULL,state TEXT NOT NULL,created_at REAL NOT NULL,settled_at REAL)")
+        connection.execute("INSERT INTO reservations VALUES ('active','a',100,100,'active',100,NULL)")
+        connection.execute("INSERT INTO reservations VALUES ('settled','a',400,400,'settled',100,100)")
+        connection.execute("PRAGMA user_version=1")
+        connection.commit()
+    store = QuotaStore(path, clock=clock)
+    assert store.usage("a") == 500
+    assert store.reserve("a", "new", 49500)
+    assert not store.reserve("a", "over", 1)
+    with pytest.raises(ValueError):
+        store.settle("active", 1)  # No guessed byte->token reinterpretation.
+    with closing(sqlite3.connect(path)) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        methods = dict(connection.execute("SELECT request_id,accounting_method FROM reservations"))
+    assert methods == {"active": LEGACY_METHOD, "settled": LEGACY_METHOD, "new": COUNTING_METHOD}
+    clock.advance(60)
+    assert store.evict() == 1 and store.usage("a") == 49600
+    assert store.settle("active")  # Explicit full settlement remains safe.
+    assert QuotaStore(path, clock=clock).usage("a") == 49600

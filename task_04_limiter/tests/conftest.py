@@ -11,6 +11,7 @@ from task_04_limiter.app import create_app
 from task_04_limiter.auth import authenticate
 from task_04_limiter.models import Settings
 from task_04_limiter.storage import QuotaStore
+from task_04_limiter.tokenization import count_tokens
 
 
 class Clock:
@@ -42,8 +43,15 @@ def provider_reply(request, text="ok", usage=True):
     payload = json.loads(request.content)
     body = {"text": text}
     if usage:
-        body["usage"] = {"input_tokens": len(payload["prompt"].encode()), "output_tokens": len(text.encode())}
+        body["usage"] = {"input_tokens": count_tokens(payload["prompt"]), "output_tokens": count_tokens(text)}
     return httpx.Response(200, json=body)
+
+
+def prompt_with_tokens(count):
+    # Short regex pieces avoid pathological long repeated-word BPE workloads.
+    text = "😀\n" * (count // 3) + ("", "!", "😀")[count % 3]
+    assert count_tokens(text) == count
+    return text
 
 
 @dataclass

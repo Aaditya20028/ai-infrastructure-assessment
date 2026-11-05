@@ -14,6 +14,7 @@ from .auth import authenticate
 from .models import CompletionRequest, Settings, parse_json
 from .providers import DeadlineExceeded, ModelRouter, ProviderClient, ProviderError
 from .storage import QuotaStore, StoreUnavailable, db_call
+from .tokenization import COUNTING_METHOD, ENCODING_NAME, encoding
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ def error(code, message, status, request_id):
 
 def create_app(settings=None, *, transport=None, store=None, deadlines=None):
     settings = settings or Settings.from_env()
+    encoding()  # Fail startup if tokenizer assets are unavailable; never use bytes.
 
     @asynccontextmanager
     async def lifespan(app):
@@ -66,7 +68,7 @@ def create_app(settings=None, *, transport=None, store=None, deadlines=None):
             reconciled = True
             return JSONResponse({"request_id": request_id, "text": result.text, "provider": provider, "fallback_reason": fallback,
                                  "usage": {**usage.model_dump(), "total_tokens": usage.input_tokens + usage.output_tokens,
-                                           "counting_method": "utf8_bytes_v1"}})
+                                           "counting_method": COUNTING_METHOD, "encoding": ENCODING_NAME}})
         except StoreUnavailable:
             return error("quota_unavailable", "Token quota temporarily unavailable", 503, request_id)
         except DeadlineExceeded:
