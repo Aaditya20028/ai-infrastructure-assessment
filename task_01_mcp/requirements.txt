@@ -1,0 +1,6 @@
+# Direct versions used to validate Task 1; transitives are not hash-locked.
+mcp==2.3.0
+mcp-types==2.3.0
+pydantic==2.14.2
+pytest==9.2.0
+pytest-asyncio==1.4.1.post1

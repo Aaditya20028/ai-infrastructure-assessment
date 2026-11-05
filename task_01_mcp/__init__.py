@@ -1,1 +1,1 @@
-"""MCP server: implementation intentionally pending."""
+"""Strict customer/refund MCP server using the official Python SDK."""
